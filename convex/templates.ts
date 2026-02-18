@@ -50,6 +50,10 @@ export const applyToTrip = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
 
     const categories = await ctx.db
       .query("templateCategories")

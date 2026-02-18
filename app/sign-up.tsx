@@ -20,28 +20,46 @@ export default function SignUpScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(false);
 
   const handleSignUp = async () => {
     if (!isLoaded) return;
     setError('');
     setLoading(true);
     try {
-      const result = await signUp.create({
+      await signUp.create({
         firstName: name.split(' ')[0],
         lastName: name.split(' ').slice(1).join(' ') || undefined,
         emailAddress: email,
         password,
       });
+
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setPendingVerification(true);
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message ?? 'Sign up failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!isLoaded) return;
+    setError('');
+    setLoading(true);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/(app)');
       } else {
-        setError('Please check your email to verify your account.');
+        setError('Verification incomplete. Please try again.');
       }
     } catch (err: any) {
-      setError(err?.errors?.[0]?.message ?? 'Sign up failed. Please try again.');
+      setError(err?.errors?.[0]?.message ?? 'Invalid verification code.');
     } finally {
       setLoading(false);
     }
@@ -62,44 +80,71 @@ export default function SignUpScreen() {
         </View>
 
         <View style={styles.form}>
-          <TextInput
-            label="Full Name"
-            value={name}
-            onChangeText={setName}
-            placeholder="John Doe"
-          />
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Create a password"
-            secureTextEntry
-          />
+          {pendingVerification ? (
+            <>
+              <Text style={styles.verifyHint}>
+                We sent a verification code to {email}
+              </Text>
+              <TextInput
+                label="Verification Code"
+                value={code}
+                onChangeText={setCode}
+                placeholder="Enter code"
+                keyboardType="number-pad"
+              />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Button
-            title="Sign Up"
-            onPress={handleSignUp}
-            loading={loading}
-            disabled={!name || !email || !password}
-            fullWidth
-          />
+              <Button
+                title="Verify Email"
+                onPress={handleVerify}
+                loading={loading}
+                disabled={!code}
+                fullWidth
+              />
+            </>
+          ) : (
+            <>
+              <TextInput
+                label="Full Name"
+                value={name}
+                onChangeText={setName}
+                placeholder="John Doe"
+              />
+              <TextInput
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TextInput
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Create a password"
+                secureTextEntry
+              />
 
-          <View style={styles.linkRow}>
-            <Text style={styles.linkText}>Already have an account? </Text>
-            <Link href="/sign-in" style={styles.link}>
-              Sign In
-            </Link>
-          </View>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              <Button
+                title="Sign Up"
+                onPress={handleSignUp}
+                loading={loading}
+                disabled={!name || !email || !password}
+                fullWidth
+              />
+
+              <View style={styles.linkRow}>
+                <Text style={styles.linkText}>Already have an account? </Text>
+                <Link href="/sign-in" style={styles.link}>
+                  Sign In
+                </Link>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -132,6 +177,12 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16,
+  },
+  verifyHint: {
+    fontSize: 14,
+    color: Colors.gray,
+    textAlign: 'center',
+    marginBottom: 4,
   },
   error: {
     color: Colors.error,

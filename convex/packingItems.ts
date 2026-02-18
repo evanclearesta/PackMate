@@ -4,6 +4,15 @@ import { v } from "convex/values";
 export const listByTrip = query({
   args: { tripId: v.id("trips") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      return [];
+    }
+
     const categories = await ctx.db
       .query("packingCategories")
       .withIndex("by_tripId", (q) => q.eq("tripId", args.tripId))
@@ -38,6 +47,10 @@ export const create = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
 
     return await ctx.db.insert("packingItems", {
       tripId: args.tripId,
@@ -64,6 +77,14 @@ export const update = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
+    const item = await ctx.db.get(args.id);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+    const trip = await ctx.db.get(item.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
 
     const { id, ...fields } = args;
     const updates: Record<string, unknown> = {};
@@ -89,6 +110,10 @@ export const togglePacked = mutation({
     if (!item) {
       throw new Error("Item not found");
     }
+    const trip = await ctx.db.get(item.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
 
     await ctx.db.patch(args.id, { isPacked: !item.isPacked });
   },
@@ -100,6 +125,14 @@ export const remove = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
+    }
+    const item = await ctx.db.get(args.id);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+    const trip = await ctx.db.get(item.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
     }
 
     const assignments = await ctx.db
@@ -124,6 +157,10 @@ export const createCategory = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
+    }
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
     }
 
     const existing = await ctx.db
@@ -154,6 +191,14 @@ export const assignToBag = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+    const trip = await ctx.db.get(item.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
 
     const existing = await ctx.db
       .query("itemBagAssignments")
@@ -182,6 +227,14 @@ export const unassignFromBag = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+    const trip = await ctx.db.get(item.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
 
     const assignments = await ctx.db
       .query("itemBagAssignments")
@@ -198,6 +251,15 @@ export const unassignFromBag = mutation({
 export const getAssignments = query({
   args: { tripId: v.id("trips") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      return [];
+    }
+
     const items = await ctx.db
       .query("packingItems")
       .withIndex("by_tripId", (q) => q.eq("tripId", args.tripId))

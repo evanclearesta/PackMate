@@ -38,8 +38,16 @@ export const list = query({
 export const get = query({
   args: { tripId: v.id("trips") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
     const trip = await ctx.db.get(args.tripId);
     if (!trip) {
+      return null;
+    }
+    if (trip.userId !== identity.subject) {
       return null;
     }
 

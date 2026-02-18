@@ -34,6 +34,10 @@ export default function SignInScreen() {
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/(app)');
+      } else {
+        setError(
+          'Additional verification is required. Please check your email or authentication app.'
+        );
       }
     } catch (err: any) {
       setError(err?.errors?.[0]?.message ?? 'Sign in failed. Please try again.');

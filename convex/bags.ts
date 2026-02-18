@@ -4,6 +4,14 @@ import { v } from "convex/values";
 export const listByTrip = query({
   args: { tripId: v.id("trips") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      return [];
+    }
     return await ctx.db
       .query("bags")
       .withIndex("by_tripId", (q) => q.eq("tripId", args.tripId))
@@ -22,6 +30,10 @@ export const create = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
+    }
+    const trip = await ctx.db.get(args.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
     }
 
     return await ctx.db.insert("bags", {
@@ -45,6 +57,14 @@ export const update = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
+    const bag = await ctx.db.get(args.id);
+    if (!bag) {
+      throw new Error("Bag not found");
+    }
+    const trip = await ctx.db.get(bag.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
+    }
 
     const { id, ...fields } = args;
     const updates: Record<string, unknown> = {};
@@ -64,6 +84,14 @@ export const remove = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
+    }
+    const bag = await ctx.db.get(args.id);
+    if (!bag) {
+      throw new Error("Bag not found");
+    }
+    const trip = await ctx.db.get(bag.tripId);
+    if (!trip || trip.userId !== identity.subject) {
+      throw new Error("Not authorized");
     }
 
     const assignments = await ctx.db

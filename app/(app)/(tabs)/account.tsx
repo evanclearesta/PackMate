@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, Alert, Platform } from 'react-native';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,10 +11,22 @@ export default function AccountScreen() {
   const { user } = useUser();
   const { signOut } = useAuth();
   const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    router.replace('/sign-in');
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.replace('/sign-in');
+    } catch {
+      if (Platform.OS === 'web') {
+        window.alert('Sign out failed. Please try again.');
+      } else {
+        Alert.alert('Error', 'Sign out failed. Please try again.');
+      }
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -72,6 +84,7 @@ export default function AccountScreen() {
           title="Sign Out"
           onPress={handleSignOut}
           variant="danger"
+          loading={signingOut}
           fullWidth
         />
       </View>
